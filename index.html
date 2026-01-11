@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Asset Discovery Portal</title>
+
+<style>
+body {
+    background:#0f172a;
+    font-family: Arial, sans-serif;
+    padding:40px;
+}
+
+h2 { color:#fff; }
+
+#resultCount {
+    color:#22d3ee;
+    font-size:16px;
+    margin:10px 0;
+    font-weight:bold;
+}
+
+/* INPUTS */
+select, input {
+    padding:12px 14px;
+    margin:8px 5px;
+    border-radius:10px;
+    border:2px solid transparent;
+    background:
+        linear-gradient(#fff,#fff) padding-box,
+        linear-gradient(120deg,#6366f1,#22d3ee,#a855f7) border-box;
+}
+
+/* BUTTON */
+button {
+    padding:12px 22px;
+    margin:8px 5px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
+    color:#fff;
+    font-weight:bold;
+    background:linear-gradient(135deg,#6366f1,#a855f7,#22d3ee);
+}
+
+/* TABLE */
+table {
+    width:100%;
+    margin-top:15px;
+    border-collapse:collapse;
+    background:#fff;
+}
+
+th, td {
+    padding:12px;
+    border:1px solid #ccc;
+}
+
+th {
+    background:#1e293b;
+    color:#fff;
+}
+
+.no-data { text-align:center; }
+</style>
+</head>
+
+<body>
+
+<h2>Asset Discovery Portal</h2>
+
+<!-- UPLOAD -->
+<input type="file" id="jsonFile" accept=".json">
+<button onclick="loadJSON()">Load JSON</button>
+
+<!-- SEARCH CONTROLS -->
+<br>
+<select id="searchType">
+    <option value="ip">IP</option>
+    <option value="domain">Domain</option>
+    <option value="title">Title</option>
+    <option value="port">Port</option>
+    <option value="request">Request</option>
+</select>
+
+<input id="searchValue" placeholder="Enter search value">
+
+<!-- RESULT COUNT (TOP) -->
+<div id="resultCount"></div>
+
+<button onclick="searchData()">Search</button>
+
+<table>
+<thead>
+<tr>
+    <th>S.No</th>
+    <th>IP</th>
+    <th>Title</th>
+    <th>Domain</th>
+    <th>Port</th>
+    <th>Request</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<script>
+let masterData = [];
+const tableBody = document.getElementById("tableBody");
+const resultCount = document.getElementById("resultCount");
+
+function loadJSON() {
+    const file = document.getElementById("jsonFile").files[0];
+    if (!file) return alert("Upload a JSON file first");
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const rawData = JSON.parse(e.target.result);
+        masterData = [];
+
+        rawData.forEach(record => {
+            extract(record.http_responseForIP);
+            extract(record.https_responseForIP);
+            extract(record.http_responseForDomainName);
+            extract(record.https_responseForDomainName);
+        });
+
+        resultCount.textContent = `Loaded Records: ${masterData.length}`;
+    };
+    reader.readAsText(file);
+}
+
+function extract(response) {
+    if (!response) return;
+    if (Array.isArray(response)) response.forEach(r => pushRow(r));
+    else pushRow(response);
+}
+
+function pushRow(r) {
+    masterData.push({
+        ip: r.ip || "",
+        title: r.title || "",
+        domain: r.domain || "",
+        port: r.port || "",
+        request: r.request || ""
+    });
+}
+
+function searchData() {
+    const type = document.getElementById("searchType").value;
+    const value = document.getElementById("searchValue").value.toLowerCase();
+
+    const filtered = masterData.filter(item =>
+        item[type].toLowerCase().includes(value)
+    );
+
+    renderRows(filtered);
+}
+
+function renderRows(data) {
+    tableBody.innerHTML = "";
+    resultCount.textContent = `Results Found: ${data.length}`;
+
+    if (data.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="6" class="no-data">No results</td></tr>`;
+        return;
+    }
+
+    data.forEach((item, i) => {
+        tableBody.innerHTML += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${item.ip}</td>
+            <td>${item.title}</td>
+            <td>${item.domain}</td>
+            <td>${item.port}</td>
+            <td>${item.request}</td>
+        </tr>`;
+    });
+}
+</script>
+
+</body>
+</html>
